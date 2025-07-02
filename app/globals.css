@@ -425,3 +425,33 @@ textarea:focus-visible {
 
 .animate-fade-in-down { animation: fade-in-down 0.4s cubic-bezier(.39,.575,.565,1.000) both; }
 @keyframes fade-in-down { 0%{opacity:0;transform:translateY(-40px);} 100%{opacity:1;transform:translateY(0);} }
+
+@keyframes popup-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popup-fade-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.animate-popup-fade-in {
+  animation: popup-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-popup-fade-out {
+  animation: popup-fade-out 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
