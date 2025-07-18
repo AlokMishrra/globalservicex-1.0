@@ -57,11 +57,11 @@ export default function Footer() {
           <div className="space-y-2">
             <h3 className="text-base font-semibold">Our Services</h3>
             <ul className="space-y-1 text-gray-400 text-xs sm:text-sm">
-              <li><a href="#web-development" className="hover:text-yellow-500 transition-colors">Web Development</a></li>
-              <li><a href="#app-development" className="hover:text-yellow-500 transition-colors">App Development</a></li>
-              <li><a href="#branding" className="hover:text-yellow-500 transition-colors">Branding & Design</a></li>
-              <li><a href="#marketing" className="hover:text-yellow-500 transition-colors">Digital Marketing</a></li>
-              <li><a href="#consulting" className="hover:text-yellow-500 transition-colors">Growth Consulting</a></li>
+              <li><Link href="/#services" scroll={false} className="hover:text-yellow-500 transition-colors">Web Development</Link></li>
+              <li><Link href="/#services" scroll={false} className="hover:text-yellow-500 transition-colors">App Development</Link></li>
+              <li><Link href="/#services" scroll={false} className="hover:text-yellow-500 transition-colors">Branding & Design</Link></li>
+              <li><Link href="/#services" scroll={false} className="hover:text-yellow-500 transition-colors">Digital Marketing</Link></li>
+              <li><Link href="/#services" scroll={false} className="hover:text-yellow-500 transition-colors">Growth Consulting</Link></li>
             </ul>
           </div>
 
@@ -161,6 +161,13 @@ export default function Footer() {
           </p>
         </div>
       </div>
+
+      {/* Add global smooth scroll style */}
+      <style jsx global>{`
+        html {
+          scroll-behavior: smooth;
+        }
+      `}</style>
     </footer>
   )
 }
