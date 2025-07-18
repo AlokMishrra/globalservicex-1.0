@@ -5,6 +5,7 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import dynamic from "next/dynamic"
 import CareerPopup from "@/components/career-popup"
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -32,6 +33,7 @@ export default function RootLayout({
         <Toaster />
         <Chatbot />
         <CareerPopup />
+        <Analytics />
       </body>
     </html>
   )
