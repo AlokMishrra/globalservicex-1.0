@@ -6,6 +6,7 @@ import { Target, Eye, Award, Users, Clock, Globe } from "lucide-react"
 import { useContactPopup } from "@/hooks/use-contact-popup"
 import Image from "next/image"
 import { useEffect, useState } from "react"
+import Link from "next/link"
 
 const stats = [
   { icon: Users, label: "Happy Clients", value: "500+" },
@@ -48,7 +49,7 @@ export default function About() {
         <div className="text-center mb-8 sm:mb-12">
           <h2 className="text-2xl sm:text-4xl font-extrabold text-gray-900 mb-3 sm:mb-4">Transforming Ideas into Digital Reality</h2>
           <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-            We are a team of passionate developers, designers, and digital strategists dedicated to helping businesses thrive in the digital world.
+            We are a team of passionate developers, designers, and digital strategists dedicated to helping businesses thrive in the digital world. Learn more about <Link href="/" className="text-yellow-600 underline font-semibold">Global Servicex</Link>.
           </p>
         </div>
         {/* Main Content */}

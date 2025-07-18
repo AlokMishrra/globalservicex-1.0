@@ -18,6 +18,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import { useContactPopup } from "@/hooks/use-contact-popup"
+import Link from "next/link"
 
 const services = [
   {
@@ -183,7 +184,7 @@ export default function Services() {
           </h2>
           <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
             We offer a comprehensive range of digital services to help your business grow and succeed in today's
-            competitive market with cutting-edge technology and proven strategies.
+            competitive market with cutting-edge technology and proven strategies. Discover more at <Link href="/" className="text-yellow-600 underline font-semibold">Global Servicex</Link>.
           </p>
         </div>
 
