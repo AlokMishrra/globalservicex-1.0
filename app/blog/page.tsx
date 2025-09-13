@@ -12,6 +12,7 @@ import ContactPopup from "@/components/contact-popup"
 import { getBlogPosts } from "@/lib/database"
 import { supabase } from "@/lib/supabase"
 import type { BlogPost } from "@/lib/supabase"
+import { formatDate } from "@/lib/date-utils"
 
 const categories = [
   "All",
@@ -189,7 +190,7 @@ export default function BlogPage() {
                           </div>
                           <div className="flex items-center space-x-1">
                             <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                            <span>{formatDate(post.created_at)}</span>
                           </div>
                         </div>
                         <Link href={`/blog/${post.slug}`}>

@@ -30,6 +30,7 @@ import {
   Upload,
   ImageIcon,
   Bot,
+  Share2,
 } from "lucide-react"
 import {
   authenticateUser,
@@ -48,18 +49,29 @@ import {
   deleteAnnouncement,
   getDashboardStats,
   getAIConsultations,
+  getForms,
+  createForm,
+  updateForm,
+  deleteForm,
   updateAIConsultationStatus,
   type AIConsultation,
   getCareers,
   type Career,
   deleteContact,
   deleteCareer,
+  getFormSubmissions,
+  initializeFormsTables,
+  type FormSubmission,
 } from "@/lib/database"
 import { createImagePreview, checkStorageAvailability, compressImage } from "@/lib/storage"
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
+import { formatDate } from "@/lib/date-utils"
 import type { Contact, BlogPost, AdminUser, Announcement } from "@/lib/supabase"
 import Image from 'next/image'
+import ApplicationsDashboard from "@/components/applications-dashboard"
+import FormBuilder, { type FormData } from "@/components/form-builder"
+import FormShare from "@/components/form-share"
 
 export default function AdminPanel() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -76,6 +88,12 @@ export default function AdminPanel() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [aiConsultations, setAIConsultations] = useState<AIConsultation[]>([])
   const [careers, setCareers] = useState<Career[]>([])
+  const [forms, setForms] = useState<any[]>([])
+  const [formSubmissions, setFormSubmissions] = useState<FormSubmission[]>([])
+  const [editingForm, setEditingForm] = useState<FormData | null>(null)
+  const [sharingForm, setSharingForm] = useState<FormData | null>(null)
+  const [formsTablesExist, setFormsTablesExist] = useState<boolean | null>(null)
+  const [showApplicationsDashboard, setShowApplicationsDashboard] = useState(false)
   const [stats, setStats] = useState({
     totalContacts: 0,
     newContacts: 0,
@@ -126,6 +144,8 @@ export default function AdminPanel() {
       setupRealTimeSubscriptions()
       checkStorage()
       getCareers().then(setCareers)
+      checkFormsTables()
+      loadForms()
     }
   }, [isLoggedIn])
 
@@ -137,6 +157,22 @@ export default function AdminPanel() {
         "Using Local Storage",
         "Images will be stored as compressed data for demo purposes. This ensures reliable image handling.",
       )
+    }
+  }
+
+  const checkFormsTables = async () => {
+    try {
+      const exists = await initializeFormsTables()
+      setFormsTablesExist(exists)
+      if (!exists) {
+        toast.error(
+          "Database Setup Required",
+          "Forms tables don't exist. Please run the database setup script to enable form functionality."
+        )
+      }
+    } catch (error) {
+      console.error("Error checking forms tables:", error)
+      setFormsTablesExist(false)
     }
   }
 
@@ -182,6 +218,7 @@ export default function AdminPanel() {
       loadUsers(),
       loadAnnouncements(),
       loadAIConsultations(),
+      loadForms(),
       loadStats(),
     ])
   }
@@ -208,7 +245,7 @@ export default function AdminPanel() {
     try {
       if (currentUser?.role === "admin") {
         const data = await getUsers()
-        setUsers(data || [])
+        setUsers((data || []) as AdminUser[])
       }
     } catch (error) {
       console.error("Error loading users:", error)
@@ -232,6 +269,7 @@ export default function AdminPanel() {
       console.error("Error loading AI consultations:", error)
     }
   }
+
 
   const loadStats = async () => {
     try {
@@ -378,6 +416,52 @@ export default function AdminPanel() {
     }
   }
 
+  // Form Management Functions
+  const handleCreateForm = async (formData: FormData) => {
+    try {
+      await createForm(formData)
+      await loadForms()
+      toast.success("Form Created! 📝", "New form has been created successfully")
+    } catch (error) {
+      console.error("Error creating form:", error)
+      toast.error("Creation Failed", "Error creating form. Please try again.")
+    }
+  }
+
+  const handleUpdateForm = async (formData: FormData) => {
+    try {
+      await updateForm(formData.id!, formData)
+      await loadForms()
+      setEditingForm(null)
+      toast.success("Form Updated! ✏️", "Form has been updated successfully")
+    } catch (error) {
+      console.error("Error updating form:", error)
+      toast.error("Update Failed", "Error updating form. Please try again.")
+    }
+  }
+
+  const handleDeleteForm = async (formId: string) => {
+    if (confirm("Are you sure you want to delete this form? This will also delete all associated submissions.")) {
+      try {
+        await deleteForm(formId)
+        await loadForms()
+        toast.success("Form Deleted! 🗑️", "Form and all submissions have been deleted successfully")
+      } catch (error) {
+        console.error("Error deleting form:", error)
+        toast.error("Deletion Failed", "Error deleting form. Please try again.")
+      }
+    }
+  }
+
+  const loadForms = async () => {
+    try {
+      const formsData = await getForms()
+      setForms(formsData)
+    } catch (error) {
+      console.error("Error loading forms:", error)
+    }
+  }
+
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -412,6 +496,29 @@ export default function AdminPanel() {
       console.error("Error updating consultation:", error)
       toast.error("Update Failed", "Error updating consultation status. Please try again.")
     }
+  }
+
+  const handleSaveForm = async (formData: FormData) => {
+    try {
+      if (editingForm) {
+        await updateForm(editingForm.id!, formData)
+        setEditingForm(null)
+        toast.success("Form Updated! 📝", "Form has been updated successfully")
+      } else {
+        await createForm(formData)
+        toast.success("Form Created! 📝", "Form has been created successfully")
+      }
+      loadForms()
+    } catch (error) {
+      console.error("Error saving form:", error)
+      toast.error("Save Failed", "Error saving form. Please try again.")
+    }
+  }
+
+
+  const handlePreviewForm = async (formData: FormData) => {
+    // This would open a preview modal or navigate to preview page
+    toast.info("Preview", "Form preview functionality would be implemented here")
   }
 
   if (!isLoggedIn) {
@@ -511,9 +618,9 @@ export default function AdminPanel() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="container mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Enhanced Dashboard Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-300 transform hover:scale-105">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -589,8 +696,8 @@ export default function AdminPanel() {
           )}
         </div>
 
-        <Tabs defaultValue="contacts" className="space-y-6">
-          <TabsList className={`grid w-full ${canAccessUsers ? "grid-cols-6" : "grid-cols-4"} bg-white shadow-sm`}>
+        <Tabs defaultValue="contacts" className="space-y-4 sm:space-y-6">
+          <TabsList className={`grid w-full ${canAccessUsers ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-8" : "grid-cols-2 sm:grid-cols-6"} bg-white shadow-sm text-xs sm:text-sm`}>
             <TabsTrigger value="contacts" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-white">
               Contacts
             </TabsTrigger>
@@ -622,6 +729,12 @@ export default function AdminPanel() {
             <TabsTrigger value="careers" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-white">
               Careers
             </TabsTrigger>
+            <TabsTrigger value="forms" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-white">
+              Forms
+            </TabsTrigger>
+            <TabsTrigger value="applications" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-white">
+              Applications
+            </TabsTrigger>
           </TabsList>
 
           {/* Contacts Tab */}
@@ -633,19 +746,19 @@ export default function AdminPanel() {
                   Contact Inquiries ({contacts.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4 max-h-96 overflow-y-auto">
+              <CardContent className="p-3 sm:p-6">
+                <div className="space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
                   {contacts.map((contact) => (
                     <div
                       key={contact.id}
-                      className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow bg-gradient-to-r from-white to-gray-50"
+                      className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 hover:shadow-md transition-shadow bg-gradient-to-r from-white to-gray-50"
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-lg">{contact.name}</h3>
-                          <p className="text-gray-600">{contact.company}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-base sm:text-lg">{contact.name}</h3>
+                          <p className="text-gray-600 text-sm sm:text-base">{contact.company}</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge
                             variant={contact.status === "new" ? "default" : "secondary"}
                             className={contact.status === "new" ? "bg-green-500 hover:bg-green-600" : ""}
@@ -656,7 +769,7 @@ export default function AdminPanel() {
                             value={contact.status}
                             onValueChange={(value) => handleUpdateContactStatus(contact.id, value as Contact["status"])}
                           >
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="w-24 sm:w-32 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -684,9 +797,9 @@ export default function AdminPanel() {
                           </Button>
                         </div>
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                        <div className="space-y-1">
+                          <p className="break-all">
                             <strong>Email:</strong> {contact.email}
                           </p>
                           <p>
@@ -696,12 +809,12 @@ export default function AdminPanel() {
                             <strong>Budget:</strong> {contact.budget || "Not specified"}
                           </p>
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <p>
                             <strong>Services:</strong> {contact.services.join(", ")}
                           </p>
                           <p>
-                            <strong>Date:</strong> {new Date(contact.created_at).toLocaleDateString()}
+                            <strong>Date:</strong> {formatDate(contact.created_at)}
                           </p>
                           <p>
                             <strong>Timeline:</strong> {contact.timeline || "Not specified"}
@@ -794,7 +907,7 @@ export default function AdminPanel() {
                             <strong>Timeline:</strong> {consultation.timeline || "Not specified"}
                           </p>
                           <p>
-                            <strong>Date:</strong> {new Date(consultation.created_at).toLocaleDateString()}
+                            <strong>Date:</strong> {formatDate(consultation.created_at)}
                           </p>
                           <p>
                             <strong>Recommendations:</strong>{" "}
@@ -1023,7 +1136,7 @@ export default function AdminPanel() {
                             <div className="flex-1">
                               <h3 className="font-semibold">{post.title}</h3>
                               <p className="text-sm text-gray-600 mt-1">
-                                {post.category} • By {post.author} • {new Date(post.created_at).toLocaleDateString()} •{" "}
+                                {post.category} • By {post.author} • {formatDate(post.created_at)} •{" "}
                                 {post.views} views
                               </p>
                               {post.excerpt && (
@@ -1301,7 +1414,7 @@ export default function AdminPanel() {
                               @{user.username} • {user.email} • {user.role}
                             </p>
                             <p className="text-xs text-gray-500">
-                              Created: {new Date(user.created_at).toLocaleDateString()}
+                              Created: {formatDate(user.created_at)}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1424,7 +1537,7 @@ export default function AdminPanel() {
                             </div>
                             <p className="text-gray-600 mb-2">{announcement.content}</p>
                             <p className="text-xs text-gray-500">
-                              Created: {new Date(announcement.created_at).toLocaleDateString()}
+                              Created: {formatDate(announcement.created_at)}
                             </p>
                           </div>
                           <div className="flex items-center gap-2 ml-4">
@@ -1474,7 +1587,7 @@ export default function AdminPanel() {
                       <Button
                         onClick={() => {
                           const link = document.createElement('a')
-                          link.href = career.resume
+                          link.href = career.resume || ''
                           link.download = `${career.name}-resume`;
                           link.click()
                         }}
@@ -1502,6 +1615,111 @@ export default function AdminPanel() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Forms Tab */}
+          <TabsContent value="forms" className="space-y-6">
+            <div className="space-y-6">
+              {/* Database Setup Warning */}
+              {formsTablesExist === false && (
+                <Card className="shadow-lg border-0 bg-red-50 border-red-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <AlertCircle className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-red-800">Database Setup Required</h3>
+                        <p className="text-red-600 text-sm mt-1">
+                          The forms tables don't exist in the database. Please run the database setup script 
+                          (scripts/19-create-forms-tables.sql) to enable form functionality.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Form Builder */}
+              <Card className="shadow-lg border-0">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    Form Builder
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  {formsTablesExist === false ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>Form builder is disabled until database tables are set up.</p>
+                    </div>
+                  ) : (
+                    <FormBuilder
+                      onSave={handleSaveForm}
+                      initialForm={editingForm || undefined}
+                      onPreview={handlePreviewForm}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Existing Forms */}
+              <Card className="shadow-lg border-0">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Existing Forms ({forms.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {forms.map((form) => (
+                      <div
+                        key={form.id}
+                        className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 hover:shadow-md transition-shadow bg-gradient-to-r from-white to-gray-50"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-base sm:text-lg">{form.title}</h3>
+                            <p className="text-gray-600 text-sm sm:text-base">{form.description}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {form.fields?.length || 0} fields • Created: {formatDate(form.created_at || '')}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant={form.is_published ? "default" : "secondary"}>
+                              {form.is_published ? "Published" : "Draft"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingForm(form)}
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteForm(form.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {forms.length === 0 && (
+                      <div className="text-center py-12">
+                        <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 text-lg">No forms created yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -1557,6 +1775,138 @@ export default function AdminPanel() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Applications Dashboard Tab */}
+          {/* Forms Tab */}
+          <TabsContent value="forms" className="space-y-6">
+            <Card className="shadow-lg border-0">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Form Management ({forms.length})
+                  </CardTitle>
+                  <Button
+                    onClick={() => setEditingForm({ title: '', description: '', fields: [], isPublished: false })}
+                    className="bg-purple-500 hover:bg-purple-600"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Form
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {editingForm ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">
+                        {editingForm.id ? 'Edit Form' : 'Create New Form'}
+                      </h3>
+                      <Button
+                        variant="outline"
+                        onClick={() => setEditingForm(null)}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
+                    <FormBuilder
+                      onSave={handleCreateForm}
+                      onUpdate={handleUpdateForm}
+                      onDelete={handleDeleteForm}
+                      initialForm={editingForm}
+                      isEditing={!!editingForm.id}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {forms.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p>No forms created yet</p>
+                        <p className="text-sm">Click "Create Form" to get started</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        {forms.map((form) => (
+                          <Card key={form.id} className="border border-gray-200">
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="font-semibold text-lg">{form.title}</h3>
+                                    <Badge 
+                                      variant={form.is_published ? "default" : "secondary"}
+                                      className={form.is_published ? "bg-green-500" : ""}
+                                    >
+                                      {form.is_published ? "Published" : "Draft"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-gray-600 text-sm mb-2">{form.description}</p>
+                                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    <span>{form.fields?.length || 0} fields</span>
+                                    <span>Created: {formatDate(form.created_at)}</span>
+                                    {form.updated_at && (
+                                      <span>Updated: {formatDate(form.updated_at)}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  {form.is_published && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setSharingForm(form)}
+                                      className="text-green-600 border-green-300 hover:bg-green-50"
+                                    >
+                                      <Share2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingForm(form)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleDeleteForm(form.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Form Share Dialog */}
+            <Dialog open={!!sharingForm} onOpenChange={() => setSharingForm(null)}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Share2 className="w-5 h-5" />
+                    Share Form
+                  </DialogTitle>
+                </DialogHeader>
+                {sharingForm && (
+                  <FormShare form={sharingForm} />
+                )}
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+
+          <TabsContent value="applications" className="space-y-6">
+            <ApplicationsDashboard />
           </TabsContent>
         </Tabs>
       </main>

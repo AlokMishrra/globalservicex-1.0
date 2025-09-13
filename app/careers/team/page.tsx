@@ -3,6 +3,7 @@ import { useState, ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createCareer } from '@/lib/database'
 import { compressImage } from '@/lib/storage'
+import { toast } from "@/hooks/use-toast"
 
 const TEAM_OPTIONS = [
   'Tech',
@@ -64,7 +65,7 @@ export default function JoinTeamPage() {
         router.push('/');
       }, 2000);
     } catch (error) {
-      alert('Submission failed. Please try again.')
+      toast.error("Submission Failed", "There was an error submitting your application. Please try again or contact us directly.")
     } finally {
       setSubmitting(false)
     }

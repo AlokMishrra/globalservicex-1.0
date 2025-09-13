@@ -1,5 +1,6 @@
 import { supabase } from "./supabase"
 import type { Contact, BlogPost, AdminUser, Announcement } from "./supabase"
+import type { FormData } from "@/components/form-builder"
 
 // AI Consultation interface
 export interface AIConsultation {
@@ -354,4 +355,351 @@ export const deleteContact = async (id: number) => {
 export const deleteCareer = async (id: number) => {
   const { error } = await supabase.from("careers").delete().eq("id", id)
   if (error) throw error
+}
+
+// Form Builder functions
+export interface FormSubmission {
+  id: number
+  form_id: string
+  data: any
+  user_email?: string
+  user_name?: string
+  user_phone?: string
+  application_type?: string
+  status?: string
+  created_at: string
+}
+
+export const createForm = async (formData: FormData) => {
+  try {
+    const { data, error } = await supabase
+      .from("forms")
+      .insert([{
+        title: formData.title,
+        description: formData.description,
+        fields: formData.fields,
+        is_published: formData.isPublished,
+        created_at: formData.createdAt || new Date().toISOString(),
+        updated_at: formData.updatedAt || new Date().toISOString()
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+      throw new Error(`Database error: ${error.message}`)
+    }
+    return data
+  } catch (error) {
+    console.error("Error creating form:", error)
+    throw new Error("Failed to create form. Please check if the forms table exists.")
+  }
+}
+
+export const getForms = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Supabase error:", error)
+      return []
+    }
+    return data || []
+  } catch (error) {
+    console.error("Error loading forms:", error)
+    return []
+  }
+}
+
+export const updateForm = async (id: string, formData: Partial<FormData>) => {
+  try {
+    const { data, error } = await supabase
+      .from("forms")
+      .update({
+        title: formData.title,
+        description: formData.description,
+        fields: formData.fields,
+        is_published: formData.isPublished,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+      throw new Error(`Database error: ${error.message}`)
+    }
+    return data
+  } catch (error) {
+    console.error("Error updating form:", error)
+    throw new Error("Failed to update form. Please check if the forms table exists.")
+  }
+}
+
+export const deleteForm = async (id: string) => {
+  try {
+    // First delete all form submissions for this form
+    const { error: submissionsError } = await supabase
+      .from("form_submissions")
+      .delete()
+      .eq("form_id", id)
+    
+    if (submissionsError) {
+      console.error("Error deleting form submissions:", submissionsError)
+      throw submissionsError
+    }
+    
+    // Then delete the form itself
+    const { error } = await supabase.from("forms").delete().eq("id", id)
+    if (error) throw error
+    
+    console.log(`Form ${id} and all its submissions deleted successfully`)
+  } catch (error) {
+    console.error("Error deleting form:", error)
+    throw error
+  }
+}
+
+export const getPublishedForms = async () => {
+  const { data, error } = await supabase
+    .from("forms")
+    .select("*")
+    .eq("is_published", true)
+    .order("created_at", { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export const getFormById = async (id: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("id", id)
+      .single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+      return null
+    }
+    return data
+  } catch (error) {
+    console.error("Error loading form:", error)
+    return null
+  }
+}
+
+export const getFormByPartialId = async (partialId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("forms")
+      .select("*")
+      .like("id", `${partialId}%`)
+      .single()
+
+    if (error) {
+      console.error("Supabase error:", error)
+      return null
+    }
+    return data
+  } catch (error) {
+    console.error("Error loading form by partial ID:", error)
+    return null
+  }
+}
+
+export const submitForm = async (formId: string, submissionData: any, userInfo?: { email?: string; name?: string; phone?: string; applicationType?: string }) => {
+  console.log('Submitting form:', { formId, submissionData, userInfo })
+  
+  // Check for duplicate submission if user email is provided
+  if (userInfo?.email) {
+    const isDuplicate = await checkDuplicateSubmission(formId, userInfo.email)
+    if (isDuplicate) {
+      console.log('Duplicate submission detected, allowing multiple submissions')
+      // Note: We're allowing multiple submissions as per user requirement
+    }
+  }
+  
+  const { data, error } = await supabase
+    .from("form_submissions")
+    .insert([{
+      form_id: formId,
+      data: submissionData,
+      user_email: userInfo?.email,
+      user_name: userInfo?.name,
+      user_phone: userInfo?.phone,
+      application_type: userInfo?.applicationType || 'general',
+      status: 'new',
+      created_at: new Date().toISOString()
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Supabase error:', error)
+    throw error
+  }
+  
+  console.log('Form submitted successfully:', data)
+  return data
+}
+
+export const getFormSubmissions = async (formId?: string) => {
+  let query = supabase
+    .from("form_submissions")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  if (formId) {
+    query = query.eq("form_id", formId)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+export const getAllApplications = async () => {
+  const [careersData, formSubmissionsData] = await Promise.all([
+    getCareers(),
+    getFormSubmissions()
+  ])
+
+  return {
+    careers: careersData,
+    formSubmissions: formSubmissionsData
+  }
+}
+
+export const updateFormSubmissionStatus = async (id: number, status: string) => {
+  const { data, error } = await supabase
+    .from("form_submissions")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const deleteFormSubmission = async (id: number) => {
+  const { error } = await supabase
+    .from("form_submissions")
+    .delete()
+    .eq("id", id)
+
+  if (error) throw error
+  console.log(`Form submission ${id} deleted successfully`)
+}
+
+export const checkDuplicateSubmission = async (formId: string, userEmail: string) => {
+  const { data, error } = await supabase
+    .from("form_submissions")
+    .select("id, status")
+    .eq("form_id", formId)
+    .eq("user_email", userEmail)
+    .limit(1)
+
+  if (error) throw error
+  return data && data.length > 0
+}
+
+export const getSubmissionStatus = async (formId: string, userEmail: string) => {
+  const { data, error } = await supabase
+    .from("form_submissions")
+    .select("id, status, created_at")
+    .eq("form_id", formId)
+    .eq("user_email", userEmail)
+    .order("created_at", { ascending: false })
+    .limit(1)
+
+  if (error) throw error
+  
+  if (data && data.length > 0) {
+    const submission = data[0]
+    // If status is rejected or deleted, user can reapply
+    if (submission.status === 'rejected' || submission.status === 'deleted') {
+      return { canApply: true, status: submission.status, lastSubmission: submission.created_at }
+    }
+    // If status is new, reviewed, contacted, accepted, in_progress, completed - user cannot apply
+    return { canApply: false, status: submission.status, lastSubmission: submission.created_at }
+  }
+  
+  return { canApply: true, status: 'none', lastSubmission: null }
+}
+
+export const getApplicationsByUser = async (email: string) => {
+  const [careersData, formSubmissionsData] = await Promise.all([
+    supabase.from("careers").select("*").eq("email", email).order("created_at", { ascending: false }),
+    supabase.from("form_submissions").select("*").eq("user_email", email).order("created_at", { ascending: false })
+  ])
+
+  return {
+    careers: careersData.data || [],
+    formSubmissions: formSubmissionsData.data || []
+  }
+}
+
+// Get form field labels by form ID
+export const getFormFieldLabels = async (formId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("forms")
+      .select("fields")
+      .eq("id", formId)
+      .single()
+    
+    if (error || !data) return {}
+    
+    const fieldMap: Record<string, string> = {}
+    if (data.fields && Array.isArray(data.fields)) {
+      data.fields.forEach((field: any) => {
+        if (field.id && field.label) {
+          fieldMap[field.id] = field.label
+        }
+      })
+    }
+    return fieldMap
+  } catch (error) {
+    console.error('Error fetching form field labels:', error)
+    return {}
+  }
+}
+
+// Initialize forms tables if they don't exist
+export const initializeFormsTables = async () => {
+  try {
+    // Check if forms table exists by trying to query it
+    const { error: formsError } = await supabase
+      .from("forms")
+      .select("id")
+      .limit(1)
+
+    if (formsError && formsError.code === "42P01") {
+      console.log("Forms table doesn't exist. Please run the database setup script.")
+      return false
+    }
+
+    // Check if form_submissions table exists
+    const { error: submissionsError } = await supabase
+      .from("form_submissions")
+      .select("id")
+      .limit(1)
+
+    if (submissionsError && submissionsError.code === "42P01") {
+      console.log("Form_submissions table doesn't exist. Please run the database setup script.")
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error("Error checking forms tables:", error)
+    return false
+  }
 }

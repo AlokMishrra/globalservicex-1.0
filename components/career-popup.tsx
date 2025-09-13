@@ -4,6 +4,7 @@ import { useCareerPopup } from "@/hooks/use-career-popup"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useRef } from "react"
+import { Target } from "lucide-react"
 
 export default function CareerPopup() {
   const { isOpen, closePopup } = useCareerPopup()
@@ -41,6 +42,10 @@ export default function CareerPopup() {
         <h3 className="text-lg font-bold text-gray-900 mb-2">Careers</h3>
         <Button onClick={() => { closePopup(); router.push('/careers/team'); }} className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold">Join Team</Button>
         <Button onClick={() => { closePopup(); router.push('/careers/internship'); }} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold">Apply for Internship</Button>
+        <Button onClick={() => { closePopup(); router.push('/careers'); }} className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold flex items-center justify-center gap-2">
+          <Target className="w-4 h-4" />
+          Opportunities
+        </Button>
         <Button onClick={() => setShowVerify(true)} className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold">Verify Certificate</Button>
         <button onClick={closePopup} className="text-gray-500 hover:text-red-500 text-sm mt-2">Cancel</button>
       </div>

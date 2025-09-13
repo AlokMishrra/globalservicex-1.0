@@ -39,7 +39,7 @@ export default function About() {
   }, [])
 
   return (
-    <section id="about" className="py-10 sm:py-14 bg-[#fafbfc] relative overflow-hidden">
+    <section id="about" className="py-10 sm:py-14 bg-[#fafbfc] relative overflow-hidden animate-fadein opacity-0 translate-y-8 transition-all duration-1000">
       {/* Floating Circles for 2D effect */}
       <div className="absolute top-10 left-1/3 w-24 h-24 sm:w-32 sm:h-32 bg-yellow-300 rounded-full opacity-60 blur-2xl z-0" />
       <div className="absolute bottom-0 left-0 w-28 h-28 sm:w-40 sm:h-40 bg-blue-200 rounded-full opacity-40 blur-2xl z-0" />

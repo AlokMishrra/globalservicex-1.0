@@ -12,6 +12,7 @@ import ContactPopup from "@/components/contact-popup"
 import { getBlogPostBySlug } from "@/lib/database"
 import type { BlogPost } from "@/lib/supabase"
 import Image from 'next/image'
+import { formatDate } from "@/lib/date-utils"
 
 export default function BlogPostPage() {
   const params = useParams()
@@ -97,7 +98,7 @@ export default function BlogPostPage() {
                   </div>
                   <div className="flex items-center space-x-1">
                     <Calendar className="w-4 h-4" />
-                    <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                    <span>{formatDate(post.created_at)}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Eye className="w-4 h-4" />
